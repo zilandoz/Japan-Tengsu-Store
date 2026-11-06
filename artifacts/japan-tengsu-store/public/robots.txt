@@ -1,4 +1,2 @@
 User-agent: *
 Allow: /
-
-# Add an absolute Sitemap URL after the production domain is confirmed.
