@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: order-inquiries
     description: Order inquiry submissions
+  - name: pricing
+    description: Product pack pricing
 paths:
   /healthz:
     get:
@@ -26,6 +28,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /order-pricing:
+    get:
+      operationId: getOrderPricing
+      tags: [pricing]
+      summary: Get current pack prices
+      description: Returns the single-bottle price and volume-discount totals.
+      responses:
+        "200":
+          description: Current pack prices
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderPricing"
   /order-inquiries:
     post:
       operationId: createOrderInquiry
@@ -77,8 +92,7 @@ components:
       properties:
         bottleCount:
           type: integer
-          minimum: 1
-          maximum: 50
+          enum: [1, 2, 3, 5, 10]
         name:
           type: string
           minLength: 1
@@ -104,6 +118,41 @@ components:
         message:
           type: string
       required: [ok, message]
+    OrderPricing:
+      type: object
+      properties:
+        currency:
+          type: string
+          enum: [USD]
+        unitPriceUsd:
+          type: number
+        packs:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderPackPrice"
+      required: [currency, unitPriceUsd, packs]
+    OrderPackPrice:
+      type: object
+      properties:
+        bottleCount:
+          type: integer
+          enum: [1, 2, 3, 5, 10]
+        discountPercent:
+          type: integer
+          minimum: 0
+          maximum: 100
+        regularPriceUsd:
+          type: number
+        totalPriceUsd:
+          type: number
+        savingsUsd:
+          type: number
+      required:
+        - bottleCount
+        - discountPercent
+        - regularPriceUsd
+        - totalPriceUsd
+        - savingsUsd
     ApiError:
       type: object
       properties:

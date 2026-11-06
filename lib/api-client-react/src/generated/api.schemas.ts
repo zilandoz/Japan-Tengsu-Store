@@ -9,12 +9,19 @@ export interface HealthStatus {
   status: string;
 }
 
+export type OrderInquiryInputBottleCount = typeof OrderInquiryInputBottleCount[keyof typeof OrderInquiryInputBottleCount];
+
+
+export const OrderInquiryInputBottleCount = {
+  NUMBER_1: 1,
+  NUMBER_2: 2,
+  NUMBER_3: 3,
+  NUMBER_5: 5,
+  NUMBER_10: 10,
+} as const;
+
 export interface OrderInquiryInput {
-  /**
-     * @minimum 1
-     * @maximum 50
-     */
-  bottleCount: number;
+  bottleCount: OrderInquiryInputBottleCount;
   /**
      * @minLength 1
      * @maxLength 100
@@ -32,6 +39,42 @@ export interface OrderInquiryInput {
 export interface OrderInquiryAccepted {
   ok: boolean;
   message: string;
+}
+
+export type OrderPricingCurrency = typeof OrderPricingCurrency[keyof typeof OrderPricingCurrency];
+
+
+export const OrderPricingCurrency = {
+  USD: 'USD',
+} as const;
+
+export type OrderPackPriceBottleCount = typeof OrderPackPriceBottleCount[keyof typeof OrderPackPriceBottleCount];
+
+
+export const OrderPackPriceBottleCount = {
+  NUMBER_1: 1,
+  NUMBER_2: 2,
+  NUMBER_3: 3,
+  NUMBER_5: 5,
+  NUMBER_10: 10,
+} as const;
+
+export interface OrderPackPrice {
+  bottleCount: OrderPackPriceBottleCount;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  discountPercent: number;
+  regularPriceUsd: number;
+  totalPriceUsd: number;
+  savingsUsd: number;
+}
+
+export interface OrderPricing {
+  currency: OrderPricingCurrency;
+  unitPriceUsd: number;
+  packs: OrderPackPrice[];
 }
 
 export interface ApiError {

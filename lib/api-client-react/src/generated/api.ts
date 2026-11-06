@@ -28,7 +28,8 @@ import type {
   ApiError,
   HealthStatus,
   OrderInquiryAccepted,
-  OrderInquiryInput
+  OrderInquiryInput,
+  OrderPricing
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -148,6 +149,108 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getHealthCheckQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetOrderPricingUrl = () => {
+
+
+
+
+  return `/api/order-pricing`
+}
+
+/**
+ * Returns the single-bottle price and volume-discount totals.
+ * @summary Get current pack prices
+ */
+export const getOrderPricing = async ( options?: Parameters<typeof customFetch>[1]): Promise<OrderPricing> => {
+
+  return customFetch<OrderPricing>(getGetOrderPricingUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOrderPricingQueryKey = () => {
+    return [
+    `/api/order-pricing`
+    ] as const;
+    }
+
+
+export const getGetOrderPricingQueryOptions = <TData = Awaited<ReturnType<typeof getOrderPricing>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getOrderPricing>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOrderPricingQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOrderPricing>>> = ({ signal }) => getOrderPricing({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOrderPricing>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetOrderPricingQueryResult = NonNullable<Awaited<ReturnType<typeof getOrderPricing>>>
+export type GetOrderPricingQueryError = ErrorType<unknown>
+
+
+export function useGetOrderPricing<TData = Awaited<ReturnType<typeof getOrderPricing>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getOrderPricing>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getOrderPricing>>,
+          TError,
+          Awaited<ReturnType<typeof getOrderPricing>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetOrderPricing<TData = Awaited<ReturnType<typeof getOrderPricing>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getOrderPricing>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getOrderPricing>>,
+          TError,
+          Awaited<ReturnType<typeof getOrderPricing>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetOrderPricing<TData = Awaited<ReturnType<typeof getOrderPricing>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getOrderPricing>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get current pack prices
+ */
+
+export function useGetOrderPricing<TData = Awaited<ReturnType<typeof getOrderPricing>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getOrderPricing>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetOrderPricingQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

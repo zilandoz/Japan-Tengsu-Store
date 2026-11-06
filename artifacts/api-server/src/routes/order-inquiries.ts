@@ -2,14 +2,20 @@ import { Router, type IRouter } from "express";
 import {
   CreateOrderInquiryBody,
   CreateOrderInquiryResponse,
+  GetOrderPricingResponse,
 } from "@workspace/api-zod";
 import { sendOrderInquiryEmail } from "../lib/order-inquiry-email";
+import { buildOrderPricing } from "../lib/order-pricing";
 
 const router: IRouter = Router();
 const rateLimitWindowMs = 15 * 60 * 1000;
 const maxInquiriesPerWindow = 5;
 const maxTrackedVisitors = 5000;
 const visitorAttempts = new Map<string, { count: number; resetAt: number }>();
+
+router.get("/order-pricing", (_req, res): void => {
+  res.json(GetOrderPricingResponse.parse(buildOrderPricing()));
+});
 
 function isRateLimited(visitorIp: string): boolean {
   const now = Date.now();

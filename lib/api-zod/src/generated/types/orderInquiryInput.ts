@@ -5,13 +5,10 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { OrderInquiryInputBottleCount } from './orderInquiryInputBottleCount';
 
 export interface OrderInquiryInput {
-  /**
-     * @minimum 1
-     * @maximum 50
-     */
-  bottleCount: number;
+  bottleCount: OrderInquiryInputBottleCount;
   /**
      * @minLength 1
      * @maxLength 100

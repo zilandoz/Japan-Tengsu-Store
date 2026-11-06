@@ -1,5 +1,6 @@
 import { ReplitConnectors } from "@replit/connectors-sdk";
 import type { OrderInquiryInput } from "@workspace/api-zod";
+import { calculatePackPrice, unitPriceUsd } from "./order-pricing";
 
 const connectors = new ReplitConnectors();
 
@@ -17,13 +18,15 @@ export async function sendOrderInquiryEmail(
 
   const phone = inquiry.phone ? cleanSingleLine(inquiry.phone) : "Not provided";
   const message = inquiry.message?.trim() || "No additional message";
-  const subtotal = inquiry.bottleCount * 30;
+  const pricing = calculatePackPrice(inquiry.bottleCount);
   const body = [
     "A new Japan Tengsu order request was submitted.",
     "",
     `Bottle quantity: ${inquiry.bottleCount}`,
-    "Unit price: USD $30.00",
-    `Subtotal before delivery: USD $${subtotal.toFixed(2)}`,
+    `Unit price: USD $${unitPriceUsd.toFixed(2)}`,
+    `Subtotal before discount: USD $${pricing.regularPriceUsd.toFixed(2)}`,
+    `Volume discount: ${pricing.discountPercent}% (-USD $${pricing.savingsUsd.toFixed(2)})`,
+    `Pack total before delivery: USD $${pricing.totalPriceUsd.toFixed(2)}`,
     "",
     `Customer name: ${cleanSingleLine(inquiry.name)}`,
     `Customer email: ${cleanSingleLine(inquiry.email)}`,

@@ -18,11 +18,31 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * Returns the single-bottle price and volume-discount totals.
+ * @summary Get current pack prices
+ */
+export const getOrderPricingResponsePacksItemDiscountPercentMin = 0;
+export const getOrderPricingResponsePacksItemDiscountPercentMax = 100;
+
+
+
+export const GetOrderPricingResponse = zod.object({
+  "currency": zod.enum(['USD']),
+  "unitPriceUsd": zod.number(),
+  "packs": zod.array(zod.object({
+  "bottleCount": zod.union([zod.literal(1),zod.literal(2),zod.literal(3),zod.literal(5),zod.literal(10)]),
+  "discountPercent": zod.number().int().min(getOrderPricingResponsePacksItemDiscountPercentMin).max(getOrderPricingResponsePacksItemDiscountPercentMax),
+  "regularPriceUsd": zod.number(),
+  "totalPriceUsd": zod.number(),
+  "savingsUsd": zod.number()
+}))
+})
+
+
+/**
  * Sends a customer-submitted pack request to the configured store inbox.
  * @summary Email an order inquiry to the store
  */
-export const createOrderInquiryBodyBottleCountMax = 50;
-
 export const createOrderInquiryBodyNameMax = 100;
 
 export const createOrderInquiryBodyEmailMax = 254;
@@ -34,7 +54,7 @@ export const createOrderInquiryBodyMessageMax = 500;
 
 
 export const CreateOrderInquiryBody = zod.object({
-  "bottleCount": zod.number().int().min(1).max(createOrderInquiryBodyBottleCountMax),
+  "bottleCount": zod.union([zod.literal(1),zod.literal(2),zod.literal(3),zod.literal(5),zod.literal(10)]),
   "name": zod.string().min(1).max(createOrderInquiryBodyNameMax),
   "email": zod.string().email().max(createOrderInquiryBodyEmailMax),
   "phone": zod.string().max(createOrderInquiryBodyPhoneMax).optional(),

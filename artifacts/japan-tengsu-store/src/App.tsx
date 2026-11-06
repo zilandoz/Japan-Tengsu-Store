@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowDownRight, ArrowRight, ShoppingBag } from 'lucide-react';
-import { useCreateOrderInquiry } from '@workspace/api-client-react';
+import { useCreateOrderInquiry, useGetOrderPricing } from '@workspace/api-client-react';
+import type { OrderPackPrice } from '@workspace/api-client-react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import {
@@ -21,13 +22,13 @@ import { useForm } from 'react-hook-form';
 
 const queryClient = new QueryClient();
 const packSizes = [1, 2, 3, 5, 10];
-const unitPrice = 30;
 const formatPrice = (amount: number) =>
   new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-    maximumFractionDigits: 0,
+    maximumFractionDigits: 2,
   }).format(amount);
+type PackPrice = OrderPackPrice;
 
 type InquiryFormValues = {
   name: string;
@@ -37,13 +38,7 @@ type InquiryFormValues = {
   consent: boolean;
 };
 
-function OrderInquiryForm({
-  bottleCount,
-  total,
-}: {
-  bottleCount: number;
-  total: number;
-}) {
+function OrderInquiryForm({ pack }: { pack: PackPrice }) {
   const mutation = useCreateOrderInquiry();
   const form = useForm<InquiryFormValues>({
     defaultValues: {
@@ -61,7 +56,7 @@ function OrderInquiryForm({
     mutation.mutate(
       {
         data: {
-          bottleCount,
+          bottleCount: pack.bottleCount,
           name: values.name.trim(),
           email: values.email.trim(),
           phone: values.phone.trim() || undefined,
@@ -87,14 +82,22 @@ function OrderInquiryForm({
         <span className="section-index">02 / Contact to order</span>
         <h3 id="inquiry-title">Send an order request.</h3>
         <p>
-          Share the best way to reach you. Your selected quantity and subtotal will be included in an email to the store.
+          Share the best way to reach you. Your selected quantity, volume discount, and total will be included in an email to the store.
           Sending this form does not confirm an order or take payment.
         </p>
         <div className="request-summary" aria-live="polite" data-testid="text-inquiry-summary">
-          <span>{bottleCount} {bottleCount === 1 ? 'bottle' : 'bottles'} · USD $30 each</span>
-          <strong>{formatPrice(total)} USD</strong>
+          <span>
+            {pack.bottleCount} {pack.bottleCount === 1 ? 'bottle' : 'bottles'}
+            {pack.discountPercent > 0 ? ` · ${pack.discountPercent}% volume discount` : ' · regular price'}
+          </span>
+          <strong>{formatPrice(pack.totalPriceUsd)} USD</strong>
         </div>
-        <p className="inquiry-fine-print">Delivery costs, if any, are not included. The store will reply to the email address you provide.</p>
+        <p className="inquiry-fine-print">
+          {pack.discountPercent > 0
+            ? `${formatPrice(pack.regularPriceUsd)} before discount; you save ${formatPrice(pack.savingsUsd)}. `
+            : ''}
+          Delivery costs, if any, are not included. The store will reply to the email address you provide.
+        </p>
       </div>
 
       <div className="inquiry-form-wrap">
@@ -199,11 +202,10 @@ function OrderInquiryForm({
 
 function Home() {
   const [selectedPack, setSelectedPack] = useState(1);
-  const [cartUnits, setCartUnits] = useState(0);
-  const [cartMessage, setCartMessage] = useState('');
-  const requestQuantity = cartUnits > 0 ? cartUnits : selectedPack;
-  const cartTotal = cartUnits * unitPrice;
-  const requestTotal = requestQuantity * unitPrice;
+  const [showInquiryForm, setShowInquiryForm] = useState(false);
+  const pricingQuery = useGetOrderPricing();
+  const pricing = pricingQuery.data;
+  const selectedPricing = pricing?.packs.find((pack) => pack.bottleCount === selectedPack);
 
   useEffect(() => {
     const configuredSiteUrl = import.meta.env.VITE_SITE_URL?.replace(/\/$/, '');
@@ -234,19 +236,13 @@ function Home() {
     if (twitterImage) twitterImage.content = `${configuredSiteUrl}/images/japan-tengsu-product.jpeg`;
   }, []);
 
-  const addToCart = () => {
-    if (cartUnits + selectedPack > 50) {
-      setCartMessage('A request can include up to 50 bottles.');
-      return;
-    }
-    setCartUnits((current) => current + selectedPack);
-    setCartMessage(`${selectedPack} ${selectedPack === 1 ? 'bottle' : 'bottles'} added to your selection.`);
-  };
-
-  const clearCart = () => {
-    setCartUnits(0);
-    setCartMessage('Your selection has been cleared.');
-  };
+  useEffect(() => {
+    if (!showInquiryForm) return;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById('order-request')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [showInquiryForm]);
 
   const focusOrder = () => {
     document.getElementById('order')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -262,10 +258,10 @@ function Home() {
         <nav className="header-links" aria-label="Main navigation">
           <a href="#product" data-testid="link-product-info">Product notes</a>
           <a href="#questions" data-testid="link-faq">Questions</a>
-          <button className="cart-link" type="button" onClick={focusOrder} aria-label={`Selection, ${cartUnits} bottles`} data-testid="button-view-selection">
+          <button className="cart-link" type="button" onClick={focusOrder} aria-label={`Buy the ${selectedPack}${selectedPack === 1 ? ' bottle' : '-bottle'} pack`} data-testid="button-view-selection">
             <ShoppingBag size={15} strokeWidth={1.6} aria-hidden="true" />
-            <span>Selection</span>
-            <span className="cart-count" data-testid="text-cart-count">{cartUnits}</span>
+            <span>Buy</span>
+            <span className="cart-count" data-testid="text-pack-count">{selectedPack}</span>
           </button>
         </nav>
       </header>
@@ -280,7 +276,7 @@ function Home() {
             </p>
             <div className="hero-meta" aria-label="Product information at a glance">
               <span><i className="meta-dot" aria-hidden="true" /> Bottle format</span>
-              <span><i className="meta-dot" aria-hidden="true" /> Pack sizes 1–10</span>
+              <span><i className="meta-dot" aria-hidden="true" /> Packs 1, 2, 3, 5 &amp; 10</span>
             </div>
             <a className="primary-link" href="#order" data-testid="link-choose-pack">
               Choose a pack <ArrowDownRight size={16} aria-hidden="true" />
@@ -315,56 +311,77 @@ function Home() {
             <span className="section-index">01 / Select quantity</span>
             <div>
               <h2 id="order-title">Choose your<br />pack size.</h2>
-              <p className="section-intro">Select a pack to see its total, then send an order request by email. The request is not a confirmed order, and this page does not take payment.</p>
+              <p className="section-intro">Select a pack to see its volume discount and total. Click Buy to open the customer form and email an order request; no payment is taken here.</p>
             </div>
           </div>
           <div className="purchase-grid">
             <div className="purchase-main">
               <span className="field-label" id="pack-size-label">Number of bottles <span className="field-note">Choose one option</span></span>
               <div className="pack-options" role="group" aria-labelledby="pack-size-label" data-testid="group-pack-sizes">
-                {packSizes.map((size) => (
-                  <button
-                    className="pack-option"
-                    type="button"
-                    key={size}
-                    aria-pressed={selectedPack === size}
-                    onClick={() => {
-                      setSelectedPack(size);
-                      setCartMessage('');
-                    }}
-                    data-testid={`button-pack-${size}`}
-                  >
-                    <span className="pack-number">{size}</span>
-                    <span className="pack-unit">{size === 1 ? 'bottle' : 'bottles'}</span>
-                  </button>
-                ))}
+                {packSizes.map((size) => {
+                  const packPrice = pricing?.packs.find((pack) => pack.bottleCount === size);
+                  return (
+                    <button
+                      className="pack-option"
+                      type="button"
+                      key={size}
+                      aria-pressed={selectedPack === size}
+                      onClick={() => setSelectedPack(size)}
+                      data-testid={`button-pack-${size}`}
+                    >
+                      <span className="pack-number">{size}</span>
+                      <span className="pack-unit">{size === 1 ? 'bottle' : 'bottles'}</span>
+                      <span className="pack-price" data-testid={`text-pack-price-${size}`}>
+                        {packPrice ? formatPrice(packPrice.totalPriceUsd) : pricingQuery.isError ? 'Unavailable' : '…'}
+                      </span>
+                      {packPrice && packPrice.discountPercent > 0 && (
+                        <span className="pack-saving">Save {packPrice.discountPercent}%</span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
-            <aside className="selection-card" aria-label="Current selection">
+            <aside className="selection-card" aria-label="Selected pack and price">
               <div className="selection-top">
-                <span className="selection-title">Your selection</span>
+                <span className="selection-title">Your pack</span>
                 <span className="selection-unit" data-testid="text-selected-pack">{selectedPack} {selectedPack === 1 ? 'bottle' : 'bottles'}</span>
               </div>
               <div className="price-note">
-                <strong data-testid="text-unit-price">{formatPrice(unitPrice)} USD / bottle</strong>
-                <p>Pack total: <strong data-testid="text-pack-total">{formatPrice(selectedPack * unitPrice)} USD</strong>. Delivery costs, if any, are not included.</p>
+                {pricing && selectedPricing ? (
+                  <>
+                    <strong data-testid="text-unit-price">{formatPrice(pricing.unitPriceUsd)} USD / bottle</strong>
+                    <p>
+                      Pack total: <strong data-testid="text-pack-total">{formatPrice(selectedPricing.totalPriceUsd)} USD</strong>
+                      {selectedPricing.discountPercent > 0
+                        ? ` · Save ${selectedPricing.discountPercent}% (${formatPrice(selectedPricing.savingsUsd)})`
+                        : ''}
+                      . Delivery costs, if any, are not included.
+                    </p>
+                  </>
+                ) : (
+                  <strong data-testid="text-unit-price">
+                    {pricingQuery.isError ? 'Price unavailable' : 'Loading pack prices…'}
+                  </strong>
+                )}
               </div>
-              <button className="add-button" type="button" onClick={addToCart} data-testid="button-add-selection">
-                <span>Add to selection</span><ArrowRight size={16} aria-hidden="true" />
+              <button
+                className="add-button"
+                type="button"
+                onClick={() => setShowInquiryForm(true)}
+                disabled={!selectedPricing}
+                data-testid="button-buy-pack"
+              >
+                <span>Buy this pack</span><ArrowRight size={16} aria-hidden="true" />
               </button>
-              <a className="inquiry-shortcut" href="#order-request" data-testid="link-send-order-request">
-                Continue to order request <ArrowDownRight size={14} aria-hidden="true" />
-              </a>
-              <p className="cart-status" role="status" aria-live="polite" data-visible={cartMessage.length > 0} data-testid="status-cart">{cartMessage || (cartUnits > 0 ? `${cartUnits} ${cartUnits === 1 ? 'bottle' : 'bottles'} in your selection — ${formatPrice(cartTotal)} USD.` : 'No bottles selected yet.')}</p>
-              {cartUnits > 0 && <p className="cart-status" data-testid="text-cart-total">Selection total: <strong>{formatPrice(cartTotal)} USD</strong></p>}
-              {cartUnits > 0 && (
-                <button className="clear-selection" type="button" onClick={clearCart} data-testid="button-clear-selection">
-                  Clear selection
+              {pricingQuery.isError && (
+                <button className="retry-pricing" type="button" onClick={() => pricingQuery.refetch()} data-testid="button-retry-pricing">
+                  Try loading prices again
                 </button>
               )}
             </aside>
           </div>
-          <OrderInquiryForm bottleCount={requestQuantity} total={requestTotal} />
+          {showInquiryForm && selectedPricing && <OrderInquiryForm pack={selectedPricing} />}
         </section>
 
         <section className="details-section" id="product" aria-labelledby="details-title">
@@ -398,7 +415,7 @@ function Home() {
                 </div>
                 <div className="fact-row">
                   <span className="fact-key">Product status</span>
-                  <span className="fact-value">Price shown is USD $30 per bottle. You can email an order request from this page; it does not process payment or confirm a purchase.</span>
+                  <span className="fact-value">The base price is USD $30 per bottle, with volume discounts on larger packs. You can email an order request from this page; it does not process payment or confirm a purchase.</span>
                 </div>
               </div>
             </div>
@@ -433,7 +450,7 @@ function Home() {
             </details>
             <details className="faq-item">
               <summary>Can I place or pay for an order here?</summary>
-              <div className="faq-answer"><p>You can email an order request using the form. It is not a confirmed order and no payment is taken. The displayed total is based on USD $30 per bottle; delivery costs, if any, are not included.</p></div>
+              <div className="faq-answer"><p>Choose a pack and click Buy to open the form. The base price is USD $30 per bottle, with larger packs discounted. An email request is not a confirmed order and no payment is taken; delivery costs, if any, are not included.</p></div>
             </details>
           </div>
         </section>
@@ -441,7 +458,7 @@ function Home() {
 
       <footer className="footer">
         <a className="wordmark" href="#top" data-testid="link-footer-home"><span className="mark" aria-hidden="true">日</span><span className="footer-brand">Japan Tengsu</span></a>
-        <p className="footer-note">Product details are limited to what is visible in the supplied image. Price is USD $30 per bottle; emailed requests do not confirm a purchase.</p>
+        <p className="footer-note">Product details are limited to what is visible in the supplied image. Packs start at USD $30 per bottle before discounts; emailed requests do not confirm a purchase.</p>
       </footer>
     </div>
   );
