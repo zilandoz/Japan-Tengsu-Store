@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Japan Tengsu Store"
+description = "A one-product Japan Tengsu storefront with bottle-pack selection and an SEO-focused product information page."
+version = "1.0.0"
+id = "artifacts/japan-tengsu-store"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24014
+
+[services.development]
+run = "pnpm --filter @workspace/japan-tengsu-store run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/japan-tengsu-store", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/japan-tengsu-store/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24014"
+BASE_PATH = "/"
